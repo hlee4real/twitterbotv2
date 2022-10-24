@@ -1,0 +1,188 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+
+	twitterscraper "github.com/n0madic/twitter-scraper"
+	"github.com/robfig/cron/v3"
+	"go.mongodb.org/mongo-driver/mongo"
+	tb "gopkg.in/telebot.v3"
+)
+
+type Client struct {
+	Token     string
+	ChatId    tb.ChatID
+	botClient *tb.Bot
+}
+
+var (
+	collection *mongo.Collection
+)
+
+func addTweetUsername() {
+	// get param twitter username
+	// // save to database
+	// username := "xxxx"
+	// // add 1 go rountine to scraper
+	// go trackTweet(username)
+}
+
+func startBotCommands(c *Client) {
+	go c.crontab()
+	c.botClient.Handle("/add", addTweetUsername())
+	fmt.Println("start listen command")
+	c.botClient.Start()
+}
+
+func trackTweet(username string) {
+	// tweetClient
+	// get update tweet
+	// insert DB
+}
+
+func scheduleTrackingTweet() {
+	// get all username from database/config
+	result := make([]string, 0)
+
+	for _, username := range result {
+		go trackTweet(username)
+	}
+
+}
+
+func scheduleSendMessage(c *Client) {
+	// get all tweets from database/config where isSend = false
+	result := make([]string, 0)
+
+	for _, content := range result {
+		sendMessage(content)
+	}
+}
+
+func sendMessage(content string) {
+	// bot.Send(tgbotapi.NewMessage(1262995839, content))
+}
+
+func crontab(c *Client) {
+	schedule := cron.New()
+	schedule.AddFunc("1 phut 1 lan", c.scheduleSendMessage)
+	schedule.Start()
+}
+
+func main() {
+	//goals:
+	//1. subcribe 1 tai khoan twitter
+	//2. bot gui tin nhan khi co tweet moi
+	//3. cac tin nhan cu se bi luu vao db
+	//4. dung signals de stop bot
+	//5. dung signals de restart bot
+	//6. đánh dấu tweet đã được gửi bằng cách thêm 1 field bool vào db, khởi tạo mặc định -> false, khi gửi xong thì update -> true
+	// go scraper("Icetea_Labs")
+	// time.Sleep(time.Second * 5)
+	var err error
+	// bot, err = tgbotapi.NewBotAPI("5516388529:AAHpOxW2utxG9A-AmmuEvFE24m-VBetXb3Q")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	bot.Debug = true
+
+	// telegram bot
+	startBotCommands()
+
+	// tracking tweet
+	scheduleTrackingTweet()
+
+	// crontab
+	crontab()
+
+	//go sendMessage(updates, bot)
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	done := make(chan bool, 1)
+	go func() {
+		sig := <-sigs
+		fmt.Println()
+		fmt.Println(sig)
+		done <- true
+	}()
+	fmt.Println("awaiting signal")
+	<-done
+	fmt.Println("exiting")
+}
+
+// func sendMessage(updates tgbotapi.UpdatesChannel, bot *tgbotapi.BotAPI) {
+// 	mongoclient, err := mongo.Connect(context.TODO(), options.Client().ApplyURI("mongodb://localhost:27017"))
+// 	if err != nil {
+// 		fmt.Println(err)
+// 	}
+// 	collection = mongoclient.Database("tracking").Collection("tweets")
+// 	collection.Indexes().CreateOne(context.Background(), mongo.IndexModel{
+// 		Keys: bson.D{
+// 			{Key: "username", Value: 1},
+// 			{Key: "URLs", Value: 1},
+// 		},
+// 		Options: options.Index().SetUnique(true),
+// 	})
+
+// 	//đưa đoạn khởi tạo bot lên hàm main
+// 	for update := range updates {
+// 		if update.Message != nil { // If we got a message
+// 			// log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
+// 			// go scraper(update.Message.Text)
+// 			for {
+// 				tweetURLs := scraper(update.Message.Text)
+// 				for _, tweetURL := range tweetURLs {
+// 					collection.InsertOne(context.Background(), bson.D{
+// 						{Key: "username", Value: update.Message.Text},
+// 						{Key: "URLs", Value: tweetURL},
+// 						{Key: "isSent", Value: false},
+// 					})
+// 					//check if tweet is sent
+// 					var result bson.M
+// 					err := collection.FindOne(context.Background(), bson.D{
+// 						{Key: "username", Value: update.Message.Text},
+// 						{Key: "URLs", Value: tweetURL},
+// 					}).Decode(&result)
+// 					if err != nil {
+// 						fmt.Println(err)
+// 					}
+// 					if result["isSent"] == false {
+// 						bot.Send(tgbotapi.NewMessage(1262995839, tweetURL))
+// 						collection.UpdateOne(context.Background(), bson.D{
+// 							{Key: "username", Value: update.Message.Text},
+// 							{Key: "URLs", Value: tweetURL},
+// 						}, bson.D{
+// 							{Key: "$set", Value: bson.D{
+// 								{Key: "isSent", Value: true},
+// 							}},
+// 						})
+// 					}
+// 					//if there is no new tweet, sleep 5 seconds then continue loop
+// 				}
+
+//				}
+//			}
+//		}
+//	}
+func scraper(username string) []string {
+	scraper := twitterscraper.New()
+	//truyen param == username vao bot telegram -> truyen vao trong gettweets de lay ra URLs, luu vao db ? de check xem no co ton tai hay chua.
+	//neu url khong ton` tai, bot -> message. Sleep 30phut -> 50 newest tweets.
+	//lam sao de subcribe cung 1 luc nhieu tai khoan twitter?
+	//tweet duoc lay thu tu: newest -> lastest
+	var tweetURLs []string
+	for tweet := range scraper.GetTweets(context.Background(), username, 20) {
+		if tweet.Error != nil {
+			fmt.Println(tweet.Error)
+			continue
+		}
+		// bot.Send(tgbotapi.NewMessage(1262995839, tweet.PermanentURL))
+		tweetURLs = append(tweetURLs, tweet.PermanentURL)
+	}
+	return tweetURLs
+}
