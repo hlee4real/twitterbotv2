@@ -22,6 +22,12 @@ type Client struct {
 var collection *mongo.Collection
 
 func init() {
+	mongoclient, err := mongo.Connect(context.TODO(), options.Client().ApplyURI("mongodb://localhost:27017"))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	collection = mongoclient.Database("tracking").Collection("tweets")
 }
 
 func (c *Client) startBotCommands() {
@@ -79,12 +85,6 @@ func trackTweet(username string) {
 }
 func (c *Client) scheduleTrackingTweet() {
 	//get all username from database
-	mongoclient, err := mongo.Connect(context.TODO(), options.Client().ApplyURI("mongodb://localhost:27017"))
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	collection = mongoclient.Database("tracking").Collection("tweets")
 	result := make([]string, 0)
 	cursor, err := collection.Distinct(context.Background(), "username", bson.D{})
 	if err != nil {
@@ -100,12 +100,6 @@ func (c *Client) scheduleTrackingTweet() {
 }
 func (c *Client) scheduleSendMessage() {
 	// get all tweets from database/config where isSend = false
-	mongoclient, err := mongo.Connect(context.TODO(), options.Client().ApplyURI("mongodb://localhost:27017"))
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	collection = mongoclient.Database("tracking").Collection("tweets")
 	result := make([]string, 0)
 	cursor, err := collection.Find(context.Background(), bson.D{
 		{Key: "isSent", Value: false},
